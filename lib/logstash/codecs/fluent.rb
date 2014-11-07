@@ -6,8 +6,8 @@ require "logstash/util"
 
 # This codec handles fluentd's msgpack schema.
 #
-# For example, you can receive logs from fluent-logger-ruby with:
-#
+# For example, you can receive logs from `fluent-logger-ruby` with:
+# [source,ruby]
 #     input {
 #       tcp {
 #         codec => fluent
@@ -16,7 +16,7 @@ require "logstash/util"
 #     }
 #
 # And from your ruby code in your own application:
-#
+# [source,ruby]
 #     logger = Fluent::Logger::FluentLogger.new(nil, :host => "example.log", :port => 4000)
 #     logger.post("some_tag", { "your" => "data", "here" => "yay!" })
 #
