@@ -27,7 +27,6 @@ require "logstash/util"
 #
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   config_name "fluent"
-  milestone 1
 
   public
   def register
