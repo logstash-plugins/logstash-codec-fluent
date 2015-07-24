@@ -44,6 +44,9 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       ))
       yield event
     end
+  rescue TypeError => e
+    @logger.info("Fluent parse failure. Falling back to raw message", :error => e, :data => data)
+    yield LogStash::Event.new("message" => data, "tags" => ["_fluentparsefailure"])
   end # def decode
 
   public
