@@ -48,7 +48,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   public
   def encode(event)
-    tag = event["tags"] || "log"
+    tag = event.get("tags") || "log"
     epochtime = event.timestamp.to_i
 
     # use normalize to make sure returned Hash is pure Ruby for

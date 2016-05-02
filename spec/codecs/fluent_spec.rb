@@ -37,7 +37,7 @@ describe LogStash::Codecs::Fluent do
 
     it "should decode without errors" do
       subject.decode(message) do |event|
-       expect(event["name"]).to eq("foo")
+       expect(event.get("name")).to eq("foo")
       end
     end
 
