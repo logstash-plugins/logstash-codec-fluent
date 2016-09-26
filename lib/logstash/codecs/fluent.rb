@@ -72,7 +72,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => tag
+                                      "tags" => [ tag ]
                                     ))
         yield event
       end
@@ -83,7 +83,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => tag
+                                      "tags" => [ tag ]
                                     ))
         yield event
       end
@@ -93,7 +93,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       map = data[2]
       event = LogStash::Event.new(map.merge(
                                     LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => tag
+                                    "tags" => [ tag ]
                                   ))
       yield event
     else
@@ -101,7 +101,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     end
   rescue StandardError => e
     @logger.error("Fluent parse error, original data now in message field", :error => e, :data => data)
-    yield LogStash::Event.new("message" => data, "tags" => ["_fluentparsefailure"])
+    yield LogStash::Event.new("message" => data, "tags" => [ "_fluentparsefailure" ])
   end
 
 end # class LogStash::Codecs::Fluent
