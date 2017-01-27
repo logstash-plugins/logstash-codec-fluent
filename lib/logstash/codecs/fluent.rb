@@ -28,25 +28,17 @@ require "logstash/util"
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   config_name "fluent"
 
-  public
   def register
     require "msgpack"
     @decoder = MessagePack::Unpacker.new
   end
 
-  public
-  def decode(data)
-    @decoder.feed(data)
-    @decoder.each do |tag, epochtime, map|
-      event = LogStash::Event.new(map.merge(
-        LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-        "tags" => tag
-      ))
-      yield event
+  def decode(data, &block)
+    @decoder.feed_each(data) do |item|
+      decode_event(item, &block)
     end
   end # def decode
 
-  public
   def encode(event)
     tag = event.get("tags") || "log"
     epochtime = event.timestamp.to_i
@@ -58,5 +50,58 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     # merge to avoid modifying data which could have side effects if multiple outputs
     @on_event.call(event, MessagePack.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
   end # def encode
+
+  private
+
+  def decode_event(data, &block)
+    tag = data[0]
+    entries = data[1]
+
+    case entries
+    when String
+      # PackedForward
+      option = data[2]
+      compressed = (option && option['compressed'] == 'gzip')
+      if compressed
+        raise(LogStash::Error, "PackedForward with compression is not supported")
+      end
+
+      entries_decoder = MessagePack::Unpacker.new
+      entries_decoder.feed_each(entries) do |entry|
+        epochtime = entry[0]
+        map = entry[1]
+        event = LogStash::Event.new(map.merge(
+                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+                                      "tags" => [ tag ]
+                                    ))
+        yield event
+      end
+    when Array
+      # Forward
+      entries.each do |entry|
+        epochtime = entry[0]
+        map = entry[1]
+        event = LogStash::Event.new(map.merge(
+                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+                                      "tags" => [ tag ]
+                                    ))
+        yield event
+      end
+    when Fixnum
+      # Message
+      epochtime = entries
+      map = data[2]
+      event = LogStash::Event.new(map.merge(
+                                    LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+                                    "tags" => [ tag ]
+                                  ))
+      yield event
+    else
+      raise(LogStash::Error, "Unknown event type")
+    end
+  rescue StandardError => e
+    @logger.error("Fluent parse error, original data now in message field", :error => e, :data => data)
+    yield LogStash::Event.new("message" => data, "tags" => [ "_fluentparsefailure" ])
+  end
 
 end # class LogStash::Codecs::Fluent
