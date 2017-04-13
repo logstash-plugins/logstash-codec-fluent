@@ -40,7 +40,8 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   end # def decode
 
   def encode(event)
-    tag = event.get("tags") || "log"
+   tag = event.get("tags") || "log"
+
     epochtime = event.timestamp.to_i
 
     # use normalize to make sure returned Hash is pure Ruby for
@@ -70,10 +71,11 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries_decoder.feed_each(entries) do |entry|
         epochtime = entry[0]
         map = entry[1]
-        event = LogStash::Event.new(map.merge(
+        arr= []
+        event = LogStash::Event.new(map.merge!(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
+                                       "tags" => tag
+                                   ){ |key, v1, v2| arr.insert(0,v2,v1) })
         yield event
       end
     when Array
@@ -81,20 +83,22 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries.each do |entry|
         epochtime = entry[0]
         map = entry[1]
-        event = LogStash::Event.new(map.merge(
+        arr= []
+       event = LogStash::Event.new(map.merge!(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
+                                      "tags" => tag
+                                    ){ |key, v1, v2| arr.insert(0,v2,v1) })
         yield event
       end
     when Fixnum
       # Message
       epochtime = entries
       map = data[2]
-      event = LogStash::Event.new(map.merge(
+      arr = []       
+      event = LogStash::Event.new(map.merge!(
                                     LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => [ tag ]
-                                  ))
+                                   "tags" =>  tag
+                                  ){ |key, v1, v2| arr.insert(0,v2,v1) })
       yield event
     else
       raise(LogStash::Error, "Unknown event type")
