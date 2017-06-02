@@ -24,11 +24,10 @@ Gem::Specification.new do |s|
 
   if RUBY_PLATFORM == 'java'
     s.platform = RUBY_PLATFORM
-    s.add_runtime_dependency 'msgpack-jruby'
-  else
-    s.add_runtime_dependency 'msgpack'
   end
-
+  
+  s.add_runtime_dependency 'msgpack'
+  
   s.add_development_dependency 'logstash-devutils', ">= 1.0.0"
 end
 
