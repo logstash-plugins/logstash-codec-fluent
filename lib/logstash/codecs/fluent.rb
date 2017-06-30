@@ -71,7 +71,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries_decoder.feed_each(entries) do |entry|
         epochtime = entry[0]
         map = entry[1]
-        arr= []
+        arr = []
         event = LogStash::Event.new(map.merge!(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
                                        "tags" => tag
@@ -83,7 +83,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries.each do |entry|
         epochtime = entry[0]
         map = entry[1]
-        arr= []
+        arr = []
        event = LogStash::Event.new(map.merge!(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
                                       "tags" => tag
