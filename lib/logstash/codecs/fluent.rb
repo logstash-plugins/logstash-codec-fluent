@@ -53,6 +53,10 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   private
 
+  def merge_values(source, target)
+      source.merge!(target){|key, old_val, new_val| [new_val, old_val]}
+  end
+
   def decode_event(data, &block)
     tag = data[0]
     entries = data[1]
@@ -70,10 +74,10 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries_decoder.feed_each(entries) do |entry|
         epochtime = entry[0]
         map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
+        event = LogStash::Event.new(merge_values(map, {
+          LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+          "tags" => tag
+        }))
         yield event
       end
     when Array
@@ -81,20 +85,20 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       entries.each do |entry|
         epochtime = entry[0]
         map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
+        event = LogStash::Event.new(merge_values(map, {
+          LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+          "tags" => tag
+        }))
         yield event
       end
     when Fixnum
       # Message
       epochtime = entries
       map = data[2]
-      event = LogStash::Event.new(map.merge(
-                                    LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => [ tag ]
-                                  ))
+      event = LogStash::Event.new(merge_values(map, {
+        LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
+        "tags" => tag
+      }))
       yield event
     else
       raise(LogStash::Error, "Unknown event type")
