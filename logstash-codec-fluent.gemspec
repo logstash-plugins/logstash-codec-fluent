@@ -22,11 +22,9 @@ Gem::Specification.new do |s|
   # Gem dependencies
   s.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 
-  if RUBY_PLATFORM == 'java'
-    s.platform = RUBY_PLATFORM
-  end
+  s.platform = 'java'
   
-  s.add_runtime_dependency 'msgpack'
+  s.add_runtime_dependency 'msgpack', '~> 1.1'
   
   s.add_development_dependency 'logstash-devutils', ">= 1.0.0"
 end
