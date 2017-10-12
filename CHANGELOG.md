@@ -1,3 +1,5 @@
+## 3.1.4
+  - Constrain msgpack dependency to ~> 1.1 due to old versions not containing some format and type definitions
 ## 3.1.3
   - Fix some documentation issues
 
