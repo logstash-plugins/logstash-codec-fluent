@@ -1,9 +1,9 @@
 Gem::Specification.new do |s|
 
   s.name            = 'logstash-codec-fluent'
-  s.version         = '3.1.4'
+  s.version         = '3.1.5'
   s.licenses        = ['Apache License (2.0)']
-  s.summary         = "This codec handles fluentd's msgpack schema."
+  s.summary         = "Reads the `fluentd` `msgpack` schema"
   s.description     = "This gem is a Logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/logstash-plugin install gemname. This gem is not a stand-alone program"
   s.authors         = ["Elastic"]
   s.email           = 'info@elastic.co'
