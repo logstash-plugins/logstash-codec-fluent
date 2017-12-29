@@ -2,8 +2,16 @@
 require_relative "../spec_helper"
 require "logstash/plugin"
 require "logstash/event"
+require "msgpack"
 
 describe LogStash::Codecs::Fluent do
+  before do
+    @factory = MessagePack::Factory.new
+    @factory.register_type(LogStash::Codecs::Fluent::EventTime::TYPE,
+                           LogStash::Codecs::Fluent::EventTime)
+    @packer = @factory.packer
+    @unpacker = @factory.unpacker
+  end
 
   let(:properties) { {:name => "foo" } }
   let(:event)      { LogStash::Event.new(properties) }
@@ -17,9 +25,25 @@ describe LogStash::Codecs::Fluent do
 
     it "should encode as message pack format" do
       subject.on_event do |event, data|
-        fields = MessagePack.unpack(data)
-        expect(fields[0]).to eq("log")
-        expect(fields[2]["name"]).to eq("foo")
+        @unpacker.feed_each(data) do |fields|
+          expect(fields[0]).to eq("log")
+          expect(fields[2]["name"]).to eq("foo")
+        end
+      end
+      subject.encode(event)
+    end
+
+  end
+
+  describe "event encoding with EventTime" do
+    subject { LogStash::Plugin.lookup("codec", "fluent").new({"nanosecond_precision" => true}) }
+
+    it "should encode as message pack format" do
+      subject.on_event do |event, data|
+        @unpacker.feed_each(data) do |fields|
+          expect(fields[0]).to eq("log")
+          expect(fields[2]["name"]).to eq("foo")
+        end
       end
       subject.encode(event)
     end
@@ -32,7 +56,7 @@ describe LogStash::Codecs::Fluent do
     let(:epochtime) { event.timestamp.to_i }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
-      MessagePack.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
+      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
     end
 
     it "should decode without errors" do
@@ -87,13 +111,13 @@ describe LogStash::Codecs::Fluent do
     let(:epochtime) { event.timestamp.to_i }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
-      MessagePack.pack([tag,
-                        [
-                          [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
-                          [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
-                          [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]
-                        ]
-                       ])
+      @packer.pack([tag,
+                    [
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]
+                    ]
+                   ])
     end
 
     it "should decode without errors" do

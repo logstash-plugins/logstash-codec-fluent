@@ -28,9 +28,16 @@ require "logstash/util"
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   config_name "fluent"
 
+  config :nanosecond_precision, :validate => :boolean, :default => false
+
   def register
     require "msgpack"
-    @decoder = MessagePack::Unpacker.new
+    @factory = MessagePack::Factory.new
+    if @nanosecond_precision
+      @factory.register_type(EventTime::TYPE, EventTime)
+    end
+    @packer = @factory.packer
+    @decoder = @factory.unpacker
   end
 
   def decode(data, &block)
@@ -110,7 +117,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         raise(LogStash::Error, "PackedForward with compression is not supported")
       end
 
-      entries_decoder = MessagePack::Unpacker.new
+      entries_decoder = @decoder
       entries_decoder.feed_each(entries) do |entry|
         epochtime = entry[0]
         map = entry[1]
