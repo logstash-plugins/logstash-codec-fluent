@@ -43,14 +43,19 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     # Ensure tag to "tag1.tag2.tag3" style string.
     # Fluentd cannot handle Array class value in forward protocol's tag.
     tag = forwardable_tag(event)
-    epochtime = event.timestamp.to_i
+    epochtime = if @nanosecond_precision
+                  EventTime.new(event.timestamp.to_i, event.timestamp.usec)
+                else
+                  event.timestamp.to_i
+                end
 
     # use normalize to make sure returned Hash is pure Ruby for
     # MessagePack#pack which relies on pure Ruby object recognition
     data = LogStash::Util.normalize(event.to_hash)
     # timestamp is serialized as a iso8601 string
     # merge to avoid modifying data which could have side effects if multiple outputs
-    @on_event.call(event, MessagePack.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
+    @packer.clear
+    @on_event.call(event, @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
   end # def encode
 
   def forwardable_tag(event)
@@ -62,6 +67,31 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       tag
     else
       tag.to_s
+    end
+  end
+
+  class EventTime
+    TYPE = 0
+
+    def initialize(sec, nsec = 0)
+      @sec = sec
+      @nsec = nsec
+    end
+
+    def to_msgpack(io = nil)
+      @sec.to_msgpack(io)
+    end
+
+    def to_msgpack_ext
+      [@sec, @nsec].pack('NN')
+    end
+
+    def self.from_msgpack_ext(data)
+      new(*data.unpack('NN'))
+    end
+
+    def to_json(*args)
+      @sec
     end
   end
 
