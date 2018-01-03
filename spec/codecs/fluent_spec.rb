@@ -28,7 +28,7 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding" do
 
-    let(:tag)       { "mytag","anothertag" }
+    let(:tag)       { ["mytag","anothertag"] }
     let(:epochtime) { event.timestamp.to_i }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
@@ -46,7 +46,7 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding (buckets of events)" do
 
-    let(:tag)       { "mytag" }
+    let(:tag)       { ["mytag","anothertag"] }
     let(:epochtime) { event.timestamp.to_i }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
@@ -75,7 +75,7 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding (broken package)" do
 
-    let(:tag)       { "mytag","anothertag" }
+    let(:tag)       { ["mytag","anothertag"] }
     let(:epochtime) { event.timestamp.to_s }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
