@@ -38,6 +38,7 @@ describe LogStash::Codecs::Fluent do
     it "should decode without errors" do
       subject.decode(message) do |event|
         expect(event.get("name")).to eq("foo")
+        expect(event.get("tags")).to eq("tag")
       end
     end
 
@@ -63,6 +64,7 @@ describe LogStash::Codecs::Fluent do
 
       subject.decode(message) do |event|
         expect(event.get("name")).to eq("foo")
+        expect(event.get("tags")).to eq("tag")
         count += 1
       end
 
