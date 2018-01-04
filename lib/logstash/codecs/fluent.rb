@@ -10,7 +10,9 @@ require "logstash/util"
 # [source,ruby]
 #     input {
 #       tcp {
-#         codec => fluent
+#         codec => fluent {
+#           nanosecond_precision => true
+#         }
 #         port => 4000
 #       }
 #     }
@@ -22,8 +24,7 @@ require "logstash/util"
 #
 # Notes:
 #
-# * the fluent uses a second-precision time for events, so you will never see
-#   subsecond precision on events processed by this codec.
+# * to handle EventTime msgpack extension, you must specify nanosecond_precision parameter as true.
 #
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   config_name "fluent"
