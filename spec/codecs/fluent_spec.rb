@@ -67,6 +67,24 @@ describe LogStash::Codecs::Fluent do
 
   end
 
+  describe "event decoding with EventTime" do
+
+    let(:tag)       { "mytag" }
+    let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(event.timestamp.to_i, event.timestamp.usec)  }
+    let(:data)      { LogStash::Util.normalize(event.to_hash) }
+    let(:message) do
+      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
+    end
+    subject { LogStash::Plugin.lookup("codec", "fluent").new({"nanosecond_precision" => true}) }
+
+    it "should decode without errors" do
+      subject.decode(message) do |event|
+        expect(event.get("name")).to eq("foo")
+      end
+    end
+
+  end
+
   describe "forward protocol tag" do
     let(:event)      { LogStash::Event.new(properties) }
     subject { LogStash::Plugin.lookup("codec", "fluent").new }
