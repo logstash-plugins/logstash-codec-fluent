@@ -55,7 +55,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   def forwardable_tag(event)
     tag = event.get("tags") || "log"
-    case tag.class
+    case tag
     when Array
       tag.join('.')
     when String
