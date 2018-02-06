@@ -1,3 +1,6 @@
+## 3.2.0
+  - Encode tags as fluent forward protocol tags
+
 ## 3.1.5
   - Update gemspec summary
 
