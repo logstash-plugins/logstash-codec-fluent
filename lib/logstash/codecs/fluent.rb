@@ -40,7 +40,9 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   end # def decode
 
   def encode(event)
-    tag = event.get("tags") || "log"
+    # Ensure tag to "tag1.tag2.tag3" style string.
+    # Fluentd cannot handle Array class value in forward protocol's tag.
+    tag = forwardable_tag(event)
     epochtime = event.timestamp.to_i
 
     # use normalize to make sure returned Hash is pure Ruby for
@@ -50,6 +52,18 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     # merge to avoid modifying data which could have side effects if multiple outputs
     @on_event.call(event, MessagePack.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
   end # def encode
+
+  def forwardable_tag(event)
+    tag = event.get("tags") || "log"
+    case tag
+    when Array
+      tag.join('.')
+    when String
+      tag
+    else
+      tag.to_s
+    end
+  end
 
   private
 

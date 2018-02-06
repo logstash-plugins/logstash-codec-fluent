@@ -43,6 +43,44 @@ describe LogStash::Codecs::Fluent do
 
   end
 
+  describe "forward protocol tag" do
+    let(:event)      { LogStash::Event.new(properties) }
+    subject { LogStash::Plugin.lookup("codec", "fluent").new }
+
+    describe "when passing Array value" do
+      let(:properties) { {:tags => ["test", "logstash"], :name => "foo" } }
+
+
+      it "should be joined with '.'" do
+        subject.forwardable_tag(event) do |tag|
+          expect(tag).to eq("test.logstash")
+        end
+      end
+    end
+
+    describe "when passing String value" do
+      let(:properties) { {:tags => "test.logstash", :name => "foo" } }
+
+
+      it "should be pass-through" do
+        subject.forwardable_tag(event) do |tag|
+          expect(tag).to eq("test.logstash")
+        end
+      end
+    end
+
+    describe "when passing other value" do
+      let(:properties) { {:tags => :symbol, :name => "foo" } }
+
+      it "should be called to_s" do
+        subject.forwardable_tag(event) do |tag|
+          expect(tag).to eq("symbol")
+        end
+      end
+    end
+
+  end
+
   describe "event decoding (buckets of events)" do
 
     let(:tag)       { "mytag" }
