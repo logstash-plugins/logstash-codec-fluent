@@ -1,3 +1,6 @@
+## 3.2.0
+  - Encode tags as fluent forward protocol tags. Ref: https://github.com/logstash-plugins/logstash-codec-fluent/pull/21
+
 ## 3.1.5
   - Update gemspec summary
 
