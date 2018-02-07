@@ -27,6 +27,8 @@ require "logstash/util"
 # * to handle EventTime msgpack extension, you must specify nanosecond_precision parameter as true.
 #
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
+  require "logstash/codecs/fluent/event_time"
+
   config_name "fluent"
 
   config :nanosecond_precision, :validate => :boolean, :default => false
@@ -75,33 +77,6 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       tag
     else
       tag.to_s
-    end
-  end
-
-  class EventTime
-    attr_reader :sec, :nsec
-
-    TYPE = 0
-
-    def initialize(sec, nsec = 0)
-      @sec = sec
-      @nsec = nsec
-    end
-
-    def to_msgpack(io = nil)
-      @sec.to_msgpack(io)
-    end
-
-    def to_msgpack_ext
-      [@sec, @nsec].pack('NN')
-    end
-
-    def self.from_msgpack_ext(data)
-      new(*data.unpack('NN'))
-    end
-
-    def to_json(*args)
-      @sec
     end
   end
 
