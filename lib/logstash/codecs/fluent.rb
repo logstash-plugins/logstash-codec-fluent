@@ -10,7 +10,9 @@ require "logstash/util"
 # [source,ruby]
 #     input {
 #       tcp {
-#         codec => fluent
+#         codec => fluent {
+#           nanosecond_precision => true
+#         }
 #         port => 4000
 #       }
 #     }
@@ -22,15 +24,23 @@ require "logstash/util"
 #
 # Notes:
 #
-# * the fluent uses a second-precision time for events, so you will never see
-#   subsecond precision on events processed by this codec.
+# * to handle EventTime msgpack extension, you must specify nanosecond_precision parameter as true.
 #
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
+  require "logstash/codecs/fluent/event_time"
+
   config_name "fluent"
+
+  config :nanosecond_precision, :validate => :boolean, :default => false
 
   def register
     require "msgpack"
-    @decoder = MessagePack::Unpacker.new
+    @factory = MessagePack::Factory.new
+    if @nanosecond_precision
+      @factory.register_type(EventTime::TYPE, EventTime)
+    end
+    @packer = @factory.packer
+    @decoder = @factory.unpacker
   end
 
   def decode(data, &block)
@@ -43,14 +53,19 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     # Ensure tag to "tag1.tag2.tag3" style string.
     # Fluentd cannot handle Array class value in forward protocol's tag.
     tag = forwardable_tag(event)
-    epochtime = event.timestamp.to_i
+    epochtime = if @nanosecond_precision
+                  EventTime.new(event.timestamp.to_i, event.timestamp.usec * 1000)
+                else
+                  event.timestamp.to_i
+                end
 
     # use normalize to make sure returned Hash is pure Ruby for
     # MessagePack#pack which relies on pure Ruby object recognition
     data = LogStash::Util.normalize(event.to_hash)
     # timestamp is serialized as a iso8601 string
     # merge to avoid modifying data which could have side effects if multiple outputs
-    @on_event.call(event, MessagePack.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
+    @packer.clear
+    @on_event.call(event, @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
   end # def encode
 
   def forwardable_tag(event)
@@ -67,6 +82,15 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   private
 
+  def decode_fluent_time(fluent_time)
+    case fluent_time
+    when Fixnum
+      fluent_time
+    when EventTime
+      Time.at(fluent_time.sec, fluent_time.nsec)
+    end
+  end
+
   def decode_event(data, &block)
     tag = data[0]
     entries = data[1]
@@ -80,9 +104,9 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         raise(LogStash::Error, "PackedForward with compression is not supported")
       end
 
-      entries_decoder = MessagePack::Unpacker.new
+      entries_decoder = @decoder
       entries_decoder.feed_each(entries) do |entry|
-        epochtime = entry[0]
+        epochtime = decode_fluent_time(entry[0])
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
@@ -93,7 +117,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     when Array
       # Forward
       entries.each do |entry|
-        epochtime = entry[0]
+        epochtime = decode_fluent_time(entry[0])
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
@@ -101,9 +125,9 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
                                     ))
         yield event
       end
-    when Fixnum
+    when Fixnum, EventTime
       # Message
-      epochtime = entries
+      epochtime = decode_fluent_time(entries)
       map = data[2]
       event = LogStash::Event.new(map.merge(
                                     LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
