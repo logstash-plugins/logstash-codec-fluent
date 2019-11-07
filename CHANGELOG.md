@@ -1,3 +1,6 @@
+## 3.3.0
+  - Handle EventTime msgpack extension to handle nanosecond precision time and add its parameter [#18](https://github.com/logstash-plugins/logstash-codec-fluent/pull/18)
+
 ## 3.2.0
   - Encode tags as fluent forward protocol tags. Ref: https://github.com/logstash-plugins/logstash-codec-fluent/pull/21
 
