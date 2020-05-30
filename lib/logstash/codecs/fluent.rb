@@ -110,7 +110,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
+                                      "tags" => map.has_key?("tags") ? map["tags"] + [ tag ] : [ tag ]
                                     ))
         yield event
       end
@@ -121,7 +121,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         map = entry[1]
         event = LogStash::Event.new(map.merge(
                                       LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
+                                      "tags" => map.has_key?("tags") ? map["tags"] + [ tag ] : [ tag ]
                                     ))
         yield event
       end
@@ -131,7 +131,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       map = data[2]
       event = LogStash::Event.new(map.merge(
                                     LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => [ tag ]
+                                    "tags" => map.has_key?("tags") ? map["tags"] + [ tag ] : [ tag ]
                                   ))
       yield event
     else
