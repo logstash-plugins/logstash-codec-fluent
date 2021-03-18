@@ -71,7 +71,7 @@ describe LogStash::Codecs::Fluent do
 
     let(:tag)       { "mytag" }
     let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(event.timestamp.to_i,
-                                                              event.timestamp.usec * 1000)  }
+                                                              event.timestamp.usec)  }
     let(:data)      { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
       @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])

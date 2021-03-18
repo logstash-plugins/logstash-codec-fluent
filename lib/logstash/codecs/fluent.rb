@@ -87,7 +87,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     when Fixnum
       fluent_time
     when EventTime
-      Time.at(fluent_time.sec, fluent_time.nsec)
+      Time.at(fluent_time.sec, fluent_time.nsec / 1000.0)
     end
   end
 
