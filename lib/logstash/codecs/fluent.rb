@@ -4,6 +4,8 @@ require "logstash/event"
 require "logstash/timestamp"
 require "logstash/util"
 
+require 'logstash/plugin_mixins/event_support/event_factory_adapter'
+
 # This codec handles fluentd's msgpack schema.
 #
 # For example, you can receive logs from `fluent-logger-ruby` with:
@@ -28,6 +30,8 @@ require "logstash/util"
 #
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   require "logstash/codecs/fluent/event_time"
+
+  include LogStash::PluginMixins::EventSupport::EventFactoryAdapter
 
   config_name "fluent"
 
@@ -106,40 +110,32 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
       entries_decoder = @decoder
       entries_decoder.feed_each(entries) do |entry|
-        epochtime = decode_fluent_time(entry[0])
-        map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
-        yield event
+        yield new_fluent_event(entry[1], entry[0], tag)
       end
     when Array
       # Forward
       entries.each do |entry|
-        epochtime = decode_fluent_time(entry[0])
-        map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
-        yield event
+        yield new_fluent_event(entry[1], entry[0], tag)
       end
     when Integer, EventTime
       # Message
-      epochtime = decode_fluent_time(entries)
-      map = data[2]
-      event = LogStash::Event.new(map.merge(
-                                    LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => [ tag ]
-                                  ))
-      yield event
+      yield new_fluent_event(data[2], entries, tag)
     else
       raise(LogStash::Error, "Unknown event type")
     end
   rescue StandardError => e
     @logger.error("Fluent parse error, original data now in message field", :error => e, :data => data)
-    yield LogStash::Event.new("message" => data, "tags" => [ "_fluentparsefailure" ])
+    yield event_factory.new_event("message" => data, "tags" => [ "_fluentparsefailure" ])
+  end
+
+  private
+
+  def new_fluent_event(map, fluent_time, tag)
+    epoch_time = decode_fluent_time(fluent_time)
+    event = event_factory.new_event(map)
+    event.set(LogStash::Event::TIMESTAMP, LogStash::Timestamp.at(epoch_time))
+    event.tag(tag)
+    event
   end
 
 end # class LogStash::Codecs::Fluent
