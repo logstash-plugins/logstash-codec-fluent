@@ -128,8 +128,6 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     yield event_factory.new_event("message" => data, "tags" => [ "_fluentparsefailure" ])
   end
 
-  private
-
   def new_fluent_event(map, fluent_time, tag)
     epoch_time = decode_fluent_time(fluent_time)
     event = event_factory.new_event(map)

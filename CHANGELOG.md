@@ -1,3 +1,6 @@
+## 3.3.1
+  - Feat: start using an event-factory [#27](https://github.com/logstash-plugins/logstash-codec-fluent/pull/27)
+
 ## 3.3.0
   - Handle EventTime msgpack extension to handle nanosecond precision time and add its parameter [#18](https://github.com/logstash-plugins/logstash-codec-fluent/pull/18)
 
