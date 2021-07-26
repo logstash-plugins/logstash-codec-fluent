@@ -1,6 +1,6 @@
 # encoding: utf-8
 require "logstash/codecs/base"
-require "logstash/util/charset"
+require "logstash/event"
 require "logstash/timestamp"
 require "logstash/util"
 
