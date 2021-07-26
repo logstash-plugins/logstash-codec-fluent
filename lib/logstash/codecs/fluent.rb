@@ -84,7 +84,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   def decode_fluent_time(fluent_time)
     case fluent_time
-    when Fixnum
+    when Integer
       fluent_time
     when EventTime
       Time.at(fluent_time.sec, fluent_time.nsec)
@@ -125,7 +125,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
                                     ))
         yield event
       end
-    when Fixnum, EventTime
+    when Integer, EventTime
       # Message
       epochtime = decode_fluent_time(entries)
       map = data[2]
