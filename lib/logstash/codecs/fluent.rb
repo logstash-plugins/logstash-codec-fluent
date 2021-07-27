@@ -110,16 +110,16 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
       entries_decoder = @decoder
       entries_decoder.feed_each(entries) do |entry|
-        yield new_fluent_event(entry[1], entry[0], tag)
+        yield generate_event(entry[1], entry[0], tag)
       end
     when Array
       # Forward
       entries.each do |entry|
-        yield new_fluent_event(entry[1], entry[0], tag)
+        yield generate_event(entry[1], entry[0], tag)
       end
     when Integer, EventTime
       # Message
-      yield new_fluent_event(data[2], entries, tag)
+      yield generate_event(data[2], entries, tag)
     else
       raise(LogStash::Error, "Unknown event type")
     end
@@ -128,7 +128,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     yield event_factory.new_event("message" => data, "tags" => [ "_fluentparsefailure" ])
   end
 
-  def new_fluent_event(map, fluent_time, tag)
+  def generate_event(map, fluent_time, tag)
     epoch_time = decode_fluent_time(fluent_time)
     event = event_factory.new_event(map)
     event.set(LogStash::Event::TIMESTAMP, LogStash::Timestamp.at(epoch_time))
