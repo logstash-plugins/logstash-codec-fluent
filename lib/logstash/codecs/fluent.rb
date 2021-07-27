@@ -5,6 +5,7 @@ require "logstash/timestamp"
 require "logstash/util"
 
 require 'logstash/plugin_mixins/event_support/event_factory_adapter'
+require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
 
 # This codec handles fluentd's msgpack schema.
 #
@@ -31,11 +32,19 @@ require 'logstash/plugin_mixins/event_support/event_factory_adapter'
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   require "logstash/codecs/fluent/event_time"
 
+  extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
+
   include LogStash::PluginMixins::EventSupport::EventFactoryAdapter
 
   config_name "fluent"
 
   config :nanosecond_precision, :validate => :boolean, :default => false
+
+  # Defines a target field for placing decoded fields.
+  # If this setting is omitted, data gets stored at the root (top level) of the event.
+  #
+  # NOTE: the target is only relevant while decoding data into a new event.
+  config :target, :validate => :field_reference
 
   def register
     require "msgpack"
@@ -130,7 +139,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   def generate_event(map, fluent_time, tag)
     epoch_time = decode_fluent_time(fluent_time)
-    event = event_factory.new_event(map)
+    event = targeted_event_factory.new_event(map)
     event.set(LogStash::Event::TIMESTAMP, LogStash::Timestamp.at(epoch_time))
     event.tag(tag)
     event

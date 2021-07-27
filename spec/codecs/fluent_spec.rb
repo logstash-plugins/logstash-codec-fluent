@@ -54,14 +54,23 @@ describe LogStash::Codecs::Fluent do
 
     let(:tag)       { "mytag" }
     let(:epochtime) { event.timestamp.to_i }
-    let(:data)      { LogStash::Util.normalize(event.to_hash) }
+    let(:data)      { LogStash::Util.normalize('name' => 'foo', 'number' => 42) }
     let(:message) do
       @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
     end
 
     it "should decode without errors" do
+      decoded = false
       subject.decode(message) do |event|
         expect(event.get("name")).to eq("foo")
+        decoded = true
+      end
+      expect(decoded).to be true
+    end
+
+    it "should tag event" do
+      subject.decode(message) do |event|
+        expect(event.get("tags")).to eql [ tag ]
       end
     end
 
@@ -72,7 +81,7 @@ describe LogStash::Codecs::Fluent do
     let(:tag)       { "mytag" }
     let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(event.timestamp.to_i,
                                                               event.timestamp.usec * 1000)  }
-    let(:data)      { LogStash::Util.normalize(event.to_hash) }
+    let(:data)      { LogStash::Util.normalize('name' => 'foo', 'number' => 42) }
     let(:message) do
       @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
     end
@@ -81,6 +90,40 @@ describe LogStash::Codecs::Fluent do
     it "should decode without errors" do
       subject.decode(message) do |event|
         expect(event.get("name")).to eq("foo")
+      end
+    end
+
+  end
+
+  describe "event decoding with target" do
+
+    let(:tag)       { "a_tag" }
+    let(:epochtime) { 123 }
+    let(:data)      { LogStash::Util.normalize('name' => 'foo') }
+    let(:message) do
+      @packer.pack([tag, epochtime, data])
+    end
+    subject { LogStash::Plugin.lookup("codec", "fluent").new("target" => '[bar]') }
+
+    it "should decode without errors" do
+      decoded = false
+      subject.decode(message) do |event|
+        expect(event.include?("name")).to be false
+        expect(event.get("bar")).to eql('name' => "foo")
+        decoded = true
+      end
+      expect(decoded).to be true
+    end
+
+    it "should tag event" do
+      subject.decode(message) do |event|
+        expect(event.get("tags")).to eql [ 'a_tag' ]
+      end
+    end
+
+    it "should set timestamp" do
+      subject.decode(message) do |event|
+        expect(event.timestamp.to_i).to eql(epochtime)
       end
     end
 
