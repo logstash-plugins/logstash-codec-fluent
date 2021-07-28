@@ -88,8 +88,8 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding with EventTime" do
 
-    let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(timestamp.to_i,
-                                                              timestamp.usec * 1000)  }
+    let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(timestamp.to_i, (timestamp.usec * 1000) + 123) }
+
     subject { LogStash::Plugin.lookup("codec", "fluent").new({"nanosecond_precision" => true}) }
 
     it "should decode without errors" do
@@ -99,6 +99,13 @@ describe LogStash::Codecs::Fluent do
         decoded = true
       end
       expect(decoded).to be true
+    end
+
+    it "decodes timestamp with nanos" do
+      subject.decode(message) do |event|
+        expect(event.timestamp.to_i).to eql epochtime.sec
+        expect(event.timestamp.usec * 1000 + 123).to eql epochtime.nsec
+      end
     end
 
   end
