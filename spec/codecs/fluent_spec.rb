@@ -13,8 +13,16 @@ describe LogStash::Codecs::Fluent do
     @unpacker = @factory.unpacker
   end
 
+  subject { LogStash::Codecs::Fluent.new(config) }
+
+  let(:config) { Hash.new }
+
   let(:properties) { {:name => "foo" } }
   let(:event)      { LogStash::Event.new(properties) }
+  let(:timestamp)  { event.timestamp }
+  let(:epochtime)  { timestamp.to_i }
+  let(:tag)  { "mytag" }
+  let(:data) { { 'name' => 'foo', 'number' => 42 } }
 
   it "should register without errors" do
     plugin = LogStash::Plugin.lookup("codec", "fluent").new
@@ -36,7 +44,8 @@ describe LogStash::Codecs::Fluent do
   end
 
   describe "event encoding with EventTime" do
-    subject { LogStash::Plugin.lookup("codec", "fluent").new({"nanosecond_precision" => true}) }
+
+    let(:config) { super().merge "nanosecond_precision" => true }
 
     it "should encode as message pack format" do
       subject.on_event do |event, data|
@@ -52,11 +61,8 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding" do
 
-    let(:tag)       { "mytag" }
-    let(:epochtime) { event.timestamp.to_i }
-    let(:data)      { LogStash::Util.normalize('name' => 'foo', 'number' => 42) }
     let(:message) do
-      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
+      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => timestamp.to_iso8601)])
     end
 
     it "should decode without errors" do
@@ -78,19 +84,21 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding with EventTime" do
 
-    let(:tag)       { "mytag" }
-    let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(event.timestamp.to_i,
-                                                              event.timestamp.usec * 1000)  }
+    let(:epochtime) { LogStash::Codecs::Fluent::EventTime.new(timestamp.to_i,
+                                                              timestamp.usec * 1000)  }
     let(:data)      { LogStash::Util.normalize('name' => 'foo', 'number' => 42) }
     let(:message) do
-      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)])
+      @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => timestamp.to_iso8601)])
     end
     subject { LogStash::Plugin.lookup("codec", "fluent").new({"nanosecond_precision" => true}) }
 
     it "should decode without errors" do
+      decoded = false
       subject.decode(message) do |event|
         expect(event.get("name")).to eq("foo")
+        decoded = true
       end
+      expect(decoded).to be true
     end
 
   end
@@ -103,7 +111,8 @@ describe LogStash::Codecs::Fluent do
     let(:message) do
       @packer.pack([tag, epochtime, data])
     end
-    subject { LogStash::Plugin.lookup("codec", "fluent").new("target" => '[bar]') }
+
+    let(:config) { super().merge "target" => '[bar]' }
 
     it "should decode without errors" do
       decoded = false
@@ -130,12 +139,9 @@ describe LogStash::Codecs::Fluent do
   end
 
   describe "forward protocol tag" do
-    let(:event)      { LogStash::Event.new(properties) }
-    subject { LogStash::Plugin.lookup("codec", "fluent").new }
 
     describe "when passing Array value" do
       let(:properties) { {:tags => ["test", "logstash"], :name => "foo" } }
-
 
       it "should be joined with '.'" do
         subject.forwardable_tag(event) do |tag|
@@ -146,7 +152,6 @@ describe LogStash::Codecs::Fluent do
 
     describe "when passing String value" do
       let(:properties) { {:tags => "test.logstash", :name => "foo" } }
-
 
       it "should be pass-through" do
         subject.forwardable_tag(event) do |tag|
@@ -169,15 +174,13 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding (buckets of events)" do
 
-    let(:tag)       { "mytag" }
-    let(:epochtime) { event.timestamp.to_i }
-    let(:data)      { LogStash::Util.normalize(event.to_hash) }
+    let(:data) { LogStash::Util.normalize(event.to_hash) }
     let(:message) do
       @packer.pack([tag,
                     [
-                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
-                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)],
-                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => timestamp.to_iso8601)],
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => timestamp.to_iso8601)],
+                      [epochtime, data.merge(LogStash::Event::TIMESTAMP => timestamp.to_iso8601)]
                     ]
                    ])
     end
@@ -197,13 +200,9 @@ describe LogStash::Codecs::Fluent do
 
   describe "event decoding (broken package)" do
 
-    let(:tag)       { "mytag" }
-    let(:epochtime) { event.timestamp.to_s }
-    let(:data)      { LogStash::Util.normalize(event.to_hash) }
+    let(:epochtime) { timestamp.to_s }
     let(:message) do
-      MessagePack.pack([tag,
-                        epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)
-                       ])
+      MessagePack.pack([tag, epochtime, data])
     end
 
     it "should decode with errors" do
