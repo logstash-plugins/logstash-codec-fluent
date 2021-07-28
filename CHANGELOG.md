@@ -1,5 +1,6 @@
 ## 3.4.0
   - Feat: added target configuration + event-factory support [#27](https://github.com/logstash-plugins/logstash-codec-fluent/pull/27)
+  - Fix: decoding of time's nano-second precision 
 
 ## 3.3.0
   - Handle EventTime msgpack extension to handle nanosecond precision time and add its parameter [#18](https://github.com/logstash-plugins/logstash-codec-fluent/pull/18)
