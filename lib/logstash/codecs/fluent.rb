@@ -1,8 +1,11 @@
 # encoding: utf-8
 require "logstash/codecs/base"
-require "logstash/util/charset"
+require "logstash/event"
 require "logstash/timestamp"
 require "logstash/util"
+
+require 'logstash/plugin_mixins/event_support/event_factory_adapter'
+require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
 
 # This codec handles fluentd's msgpack schema.
 #
@@ -29,9 +32,19 @@ require "logstash/util"
 class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   require "logstash/codecs/fluent/event_time"
 
+  extend LogStash::PluginMixins::ValidatorSupport::FieldReferenceValidationAdapter
+
+  include LogStash::PluginMixins::EventSupport::EventFactoryAdapter
+
   config_name "fluent"
 
   config :nanosecond_precision, :validate => :boolean, :default => false
+
+  # Defines a target field for placing decoded fields.
+  # If this setting is omitted, data gets stored at the root (top level) of the event.
+  #
+  # NOTE: the target is only relevant while decoding data into a new event.
+  config :target, :validate => :field_reference
 
   def register
     require "msgpack"
@@ -84,10 +97,10 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
   def decode_fluent_time(fluent_time)
     case fluent_time
-    when Fixnum
+    when Integer
       fluent_time
     when EventTime
-      Time.at(fluent_time.sec, fluent_time.nsec)
+      Time.at(fluent_time.sec, fluent_time.nsec / 1000.0)
     end
   end
 
@@ -106,40 +119,30 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
 
       entries_decoder = @decoder
       entries_decoder.feed_each(entries) do |entry|
-        epochtime = decode_fluent_time(entry[0])
-        map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
-        yield event
+        yield generate_event(entry[1], entry[0], tag)
       end
     when Array
       # Forward
       entries.each do |entry|
-        epochtime = decode_fluent_time(entry[0])
-        map = entry[1]
-        event = LogStash::Event.new(map.merge(
-                                      LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                      "tags" => [ tag ]
-                                    ))
-        yield event
+        yield generate_event(entry[1], entry[0], tag)
       end
-    when Fixnum, EventTime
+    when Integer, EventTime
       # Message
-      epochtime = decode_fluent_time(entries)
-      map = data[2]
-      event = LogStash::Event.new(map.merge(
-                                    LogStash::Event::TIMESTAMP => LogStash::Timestamp.at(epochtime),
-                                    "tags" => [ tag ]
-                                  ))
-      yield event
+      yield generate_event(data[2], entries, tag)
     else
       raise(LogStash::Error, "Unknown event type")
     end
   rescue StandardError => e
     @logger.error("Fluent parse error, original data now in message field", :error => e, :data => data)
-    yield LogStash::Event.new("message" => data, "tags" => [ "_fluentparsefailure" ])
+    yield event_factory.new_event("message" => data, "tags" => [ "_fluentparsefailure" ])
+  end
+
+  def generate_event(map, fluent_time, tag)
+    epoch_time = decode_fluent_time(fluent_time)
+    event = targeted_event_factory.new_event(map)
+    event.set(LogStash::Event::TIMESTAMP, LogStash::Timestamp.at(epoch_time))
+    event.tag(tag)
+    event
   end
 
 end # class LogStash::Codecs::Fluent
