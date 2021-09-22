@@ -117,7 +117,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
         raise(LogStash::Error, "PackedForward with compression is not supported")
       end
 
-      entries_decoder = @decoder
+      entries_decoder = @factory.unpacker
       entries_decoder.feed_each(entries) do |entry|
         yield generate_event(entry[1], entry[0], tag)
       end
