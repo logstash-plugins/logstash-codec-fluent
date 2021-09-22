@@ -13,7 +13,7 @@ describe LogStash::Codecs::Fluent do
     @unpacker = @factory.unpacker
   end
 
-  subject { LogStash::Codecs::Fluent.new(config) }
+  subject(:fluent_codec) { LogStash::Codecs::Fluent.new(config) }
 
   let(:config) { Hash.new }
 
@@ -200,6 +200,46 @@ describe LogStash::Codecs::Fluent do
       expect(count).to eq(3)
     end
 
+  end
+
+  describe "event decoding (multiple PackForward messages)" do
+    def pack_events(logstash_events)
+      packer = @factory.packer
+      logstash_events.map {|logstash_event| [logstash_event.timestamp.to_i, logstash_event.to_hash.merge(LogStash::Event::TIMESTAMP => logstash_event.timestamp.to_iso8601)] }
+                     .each {|fluentd_event_tuple| packer.pack(fluentd_event_tuple) }
+      packer.to_s
+    end
+
+    def generate_event(idx)
+      LogStash::Event.new("idx" => idx)
+    end
+
+    def generate_events(idx_range)
+      idx_range.map {|idx| generate_event(idx) }
+    end
+
+    # our message needs to contain _multiple_ PackForward events, at least
+    # one of which contains multiple Events in its pack. This ensures we don't
+    # cross wires with our pack buffers.
+    let(:message) do
+      @factory.packer.pack([tag, pack_events(generate_events(000...100))])
+                     .pack([tag, pack_events(generate_events(100...117))])
+                     .pack([tag, pack_events([generate_event(117)])])
+                     .pack([tag, pack_events([generate_event(118)])])
+                     .pack([tag, pack_events(generate_events(119...199))])
+                     .to_s
+    end
+
+    it 'decodes packed events without errors' do
+      seen = []
+
+      fluent_codec.decode(message) do |event|
+        seen << event.get("idx")
+        expect(event.get("tags")).to be_a_kind_of(Array).and(include(tag))
+      end
+
+      expect(seen).to match_array((000...199).to_a) # unordered
+    end
   end
 
   describe "event decoding (broken package)" do

@@ -1,3 +1,6 @@
+## 3.4.1
+  - Fix: handle multiple PackForward-encoded messages in a single payload [#28](https://github.com/logstash-plugins/logstash-codec-fluent/pull/28)
+
 ## 3.4.0
   - Feat: added target configuration + event-factory support [#27](https://github.com/logstash-plugins/logstash-codec-fluent/pull/27)
   - Fix: decoding of time's nano-second precision 
