@@ -47,6 +47,21 @@ describe LogStash::Codecs::Fluent do
 
   end
 
+  describe "when encoding timestamps" do
+    let(:properties) { {:name => "foo", :custom_time => Time.now() } }
+
+    it "converts to iso8601 and encodes without issue" do
+      subject.on_event do |event, data|
+        @unpacker.feed_each(data) do |fields|
+          expect(fields[0]).to eq("log")
+          expect(fields[2]["name"]).to eq("foo")
+          expect(fields[2]["custom_time"]).not_to be_nil
+        end
+      end
+      subject.encode(event)
+    end
+  end
+
   describe "event encoding with EventTime" do
 
     let(:config) { super().merge "nanosecond_precision" => true }

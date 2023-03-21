@@ -1,3 +1,6 @@
+## 3.4.2
+  - Fix: timestamp values are converted to iso-8601 to resolve the crash [#30](https://github.com/logstash-plugins/logstash-codec-fluent/pull/30)
+
 ## 3.4.1
   - Fix: handle multiple PackForward-encoded messages in a single payload [#28](https://github.com/logstash-plugins/logstash-codec-fluent/pull/28)
 

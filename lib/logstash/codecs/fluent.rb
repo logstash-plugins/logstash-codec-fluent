@@ -75,10 +75,13 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     # use normalize to make sure returned Hash is pure Ruby for
     # MessagePack#pack which relies on pure Ruby object recognition
     data = LogStash::Util.normalize(event.to_hash)
+
     # timestamp is serialized as a iso8601 string
     # merge to avoid modifying data which could have side effects if multiple outputs
+    map_timestamp(data)
+
     @packer.clear
-    @on_event.call(event, @packer.pack([tag, epochtime, data.merge(LogStash::Event::TIMESTAMP => event.timestamp.to_iso8601)]))
+    @on_event.call(event, @packer.pack([tag, epochtime, data]))
   end # def encode
 
   def forwardable_tag(event)
@@ -143,6 +146,12 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     event.set(LogStash::Event::TIMESTAMP, LogStash::Timestamp.at(epoch_time))
     event.tag(tag)
     event
+  end
+
+  def map_timestamp(event_hash)
+    event_hash.each do |k, v|
+      event_hash[k] = v.to_iso8601 if v.kind_of?(LogStash::Timestamp)
+    end
   end
 
 end # class LogStash::Codecs::Fluent
