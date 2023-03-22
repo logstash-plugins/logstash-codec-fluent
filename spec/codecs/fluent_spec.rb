@@ -48,7 +48,7 @@ describe LogStash::Codecs::Fluent do
   end
 
   describe "when encoding timestamps" do
-    let(:properties) { {:name => "foo", :custom_time => Time.now() } }
+    let(:properties) { {:name => "foo", :custom_time => Time.now(), :time => { :custom_time => Time.now() } } }
 
     it "converts to iso8601 and encodes without issue" do
       subject.on_event do |event, data|
@@ -56,6 +56,8 @@ describe LogStash::Codecs::Fluent do
           expect(fields[0]).to eq("log")
           expect(fields[2]["name"]).to eq("foo")
           expect(fields[2]["custom_time"]).not_to be_nil
+          expect(fields[2]["time"]).not_to be_nil
+          expect(fields[2]["time"]["custom_time"]).not_to be_nil
         end
       end
       subject.encode(event)
