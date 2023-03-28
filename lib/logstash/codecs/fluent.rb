@@ -152,6 +152,9 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
     event_hash.each do |k, v|
       event_hash[k] = v.to_iso8601 if v.kind_of?(LogStash::Timestamp)
       event_hash[k] = map_timestamp(v) if v.kind_of?(Hash)
+      if v.kind_of?(Array)
+        event_hash[k] = v.map { |item| item.kind_of?(LogStash::Timestamp) ? item.to_iso8601 : item }
+      end
     end
   end
 
