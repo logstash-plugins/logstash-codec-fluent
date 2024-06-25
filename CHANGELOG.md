@@ -1,5 +1,5 @@
 ## 3.4.3
-- Fix: reduce overhead of unpacking packforward-payloads by reusing a single instance [#32](https://github.com/logstash-plugins/logstash-codec-fluent/pull/32)
+  - Fix: reduce overhead of unpacking packforward-payloads by reusing a single instance [#32](https://github.com/logstash-plugins/logstash-codec-fluent/pull/32)
 
 ## 3.4.2
   - Fix: Convert LogStash::Timestamp values to iso-8601 to resolve crash issue with `msgpack` serialization [#30](https://github.com/logstash-plugins/logstash-codec-fluent/pull/30)
