@@ -3,6 +3,8 @@ require "logstash/codecs/base"
 require "logstash/event"
 require "logstash/timestamp"
 require "logstash/util"
+require "stringio"
+require "zlib"
 
 require 'logstash/plugin_mixins/event_support/event_factory_adapter'
 require 'logstash/plugin_mixins/validator_support/field_reference_validation_adapter'
@@ -113,9 +115,7 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
       # PackedForward
       option = data[2]
       compressed = (option && option['compressed'] == 'gzip')
-      if compressed
-        raise(LogStash::Error, "PackedForward with compression is not supported")
-      end
+      entries = gunzip(entries) if compressed
 
       entries_decoder = (@packforward_decoder ||= @factory.unpacker).tap(&:reset)
       entries_decoder.feed_each(entries) do |entry|
@@ -135,6 +135,22 @@ class LogStash::Codecs::Fluent < LogStash::Codecs::Base
   rescue StandardError => e
     @logger.error("Fluent parse error, original data now in message field", :error => e, :data => data)
     yield event_factory.new_event("message" => data, "tags" => [ "_fluentparsefailure" ])
+  end
+
+  # Fluentd compresses every chunk of a PackedForward message separately, so the payload
+  # can be a concatenation of several gzip members; all of them are decompressed.
+  def gunzip(data)
+    io = StringIO.new(data)
+    result = String.new(:encoding => Encoding::BINARY)
+    loop do
+      reader = Zlib::GzipReader.new(io)
+      result << reader.read
+      unused = reader.unused
+      reader.finish
+      break if unused.nil?
+      io.pos -= unused.bytesize
+    end
+    result
   end
 
   def generate_event(map, fluent_time, tag)

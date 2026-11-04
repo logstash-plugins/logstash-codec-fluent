@@ -264,6 +264,55 @@ describe LogStash::Codecs::Fluent do
     end
   end
 
+  describe "event decoding (compressed PackForward messages)" do
+    def gzip(string)
+      io = StringIO.new(String.new(:encoding => Encoding::BINARY))
+      writer = Zlib::GzipWriter.new(io)
+      writer.write(string)
+      writer.close
+      io.string
+    end
+
+    def pack_entries(count)
+      packer = @factory.packer
+      count.times { |idx| packer.pack([epochtime, { "idx" => idx }]) }
+      packer.to_s
+    end
+
+    let(:options) { { "compressed" => "gzip" } }
+    let(:message) { @packer.pack([tag, gzip(pack_entries(3)), options]) }
+
+    it "decodes gzip-compressed entries" do
+      seen = []
+      fluent_codec.decode(message) do |event|
+        seen << event.get("idx")
+        expect(event.get("tags")).to include(tag)
+      end
+      expect(seen).to eq([0, 1, 2])
+    end
+
+    context "when the payload has several gzip members" do
+      let(:message) { @packer.pack([tag, gzip(pack_entries(2)) + gzip(pack_entries(3)), options]) }
+
+      it "decodes the entries of all of them" do
+        seen = []
+        fluent_codec.decode(message) { |event| seen << event.get("idx") }
+        expect(seen).to eq([0, 1, 0, 1, 2])
+      end
+    end
+
+    context "when the payload is not valid gzip" do
+      let(:message) { @packer.pack([tag, "not gzip", options]) }
+
+      it "injects a failure event" do
+        events = []
+        fluent_codec.decode(message) { |event| events << event }
+        expect(events.size).to eq(1)
+        expect(events.first.get("tags")).to include("_fluentparsefailure")
+      end
+    end
+  end
+
   describe "event decoding (broken package)" do
 
     let(:epochtime) { timestamp.to_s }
