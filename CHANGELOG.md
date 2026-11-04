@@ -1,3 +1,6 @@
+## 3.5.0
+  - Feat: support PackedForward messages compressed with gzip (`compress gzip` in Fluent Bit / Fluentd forward output) [#33](https://github.com/logstash-plugins/logstash-codec-fluent/issues/33)
+
 ## 3.4.3
   - Fix: reduce overhead of unpacking packforward-payloads by reusing a single instance [#32](https://github.com/logstash-plugins/logstash-codec-fluent/pull/32)
 
